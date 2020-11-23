@@ -10,12 +10,13 @@ class AlertReceiver:BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
 
         val notificationManager = NotificationManagerCompat.from(context!!)
-
+        val id = intent?.extras?.getInt("id")
+        val detail = intent?.extras?.getString("detail")
         val notification =
             NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_background)
-                .setContentTitle("Title")
-                .setContentText("22:10, Title Continues..")
+                .setContentTitle(detail)
+                .setContentText("$id - $detail")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .build()
 

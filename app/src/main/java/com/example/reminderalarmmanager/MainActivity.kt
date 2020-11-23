@@ -70,13 +70,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         cancelAlarmButton.setOnClickListener {
-            val availableAlarmList = getArrayList(ALARM_STORE_KEY)!!.map { "${it.id} - ${it.detail}" }.toTypedArray()
+            val availableAlarmObjectList = getArrayList(ALARM_STORE_KEY)!!
+            val availableAlarmList = availableAlarmObjectList.map { "${it.id} - ${it.detail}" }.toTypedArray()
 
             MaterialAlertDialogBuilder(this)
                 .setTitle("Select Alarm to cancel.")
                 .setItems(availableAlarmList) { dialog, which ->
-                    val selectedId = availableAlarmList[which]
-                    cancelAlarm(selectedId.toInt())
+                    val selectedAlarm = availableAlarmObjectList[which]
+                    cancelAlarm(selectedAlarm.id)
                     time.text = getString(R.string.amount_of_alarms,availableAlarmList.size)
                 }
                 .show()
@@ -101,7 +102,7 @@ class MainActivity : AppCompatActivity() {
         val alarmManager: AlarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
         val intent = Intent(this, AlertReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(this, alarmId, intent, 0)
+
 
         if(isRepeatable){
             var baseTime = 0L
@@ -112,21 +113,28 @@ class MainActivity : AppCompatActivity() {
             }
 
             val frequency = this.getFrequencyType()
-
+            detail = "Every " + REPEAT_TYPES[alarmId]
+            intent.putExtra("id",alarmId)
+            intent.putExtra("detail",detail)
+            val pendingIntent = PendingIntent.getBroadcast(this, alarmId, intent, 0)
             alarmManager.setInexactRepeating(
                 AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 baseTime + frequency,
                 frequency,
                 pendingIntent
             )
-            detail = "Every " + REPEAT_TYPES[alarmId]
+
         }else{
             if (cal!!.before(Calendar.getInstance())) {
                 cal.add(Calendar.DATE, 1)
             }
+            detail = DateFormat.getTimeInstance(DateFormat.SHORT).format(cal.time)
+
+            intent.putExtra("id",alarmId)
+            intent.putExtra("detail",detail)
+            val pendingIntent = PendingIntent.getBroadcast(this, alarmId, intent, 0)
 
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
-            detail = DateFormat.getTimeInstance(DateFormat.SHORT).format(cal.time)
         }
 
         saveAlarm(Alarm(id = alarmId,detail = detail!!))
