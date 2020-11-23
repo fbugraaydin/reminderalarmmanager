@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">ReminderAlarmManager</string>
+    <string name="cancel_alarm_info">Canceled Alarm: %s</string>
+    <string name="set_alarm_info">Alarm Set: %s</string>
+    <string name="amount_of_alarms">The amount of alarm is %d</string>
+</resources>
