@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
-import android.os.SystemClock
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -24,7 +23,7 @@ import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity() {
 
-    private var selectedRepeatType: Int = 0
+    private var selectedRepeatType: RepeatType? = null
     private lateinit var time: TextView
     private lateinit var datePickerButton: Button
     private lateinit var cancelAlarmButton: Button
@@ -48,7 +47,7 @@ class MainActivity : AppCompatActivity() {
     private fun listeners() {
         datePickerButton.setOnClickListener {
             val materialTimePicker: MaterialTimePicker = MaterialTimePicker.Builder()
-                .setTimeFormat(TimeFormat.CLOCK_24H).build()
+                .setTimeFormat(TimeFormat.CLOCK_12H).build()
             materialTimePicker.show(supportFragmentManager, "time_picker_fragment")
 
             materialTimePicker.addOnPositiveButtonClickListener {
@@ -59,12 +58,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         repeatTimeSelectButton.setOnClickListener {
-
             MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.frequecy_dialog_title)
-                .setItems(REPEAT_TYPES) { dialog, which ->
-                    this.selectedRepeatType = which
-                    startAlarm(null, true)
+                .setItems(RepeatType.labels().toTypedArray()) { dialog, which ->
+                    this.selectedRepeatType = RepeatType.getById(which)
+                    startRepeatAlarm()
                 }
                 .show()
         }
@@ -90,56 +88,69 @@ class MainActivity : AppCompatActivity() {
         cal[Calendar.MINUTE] = minute
         cal[Calendar.SECOND] = 0
 
-        startAlarm(cal, false)
+        startExactAlarm(cal)
     }
 
-    private fun startAlarm(cal: Calendar?, isRepeatable: Boolean) {
-        val alarmList = this.getArrayList(ALARM_STORE_KEY)
-        val alarmId = if (alarmList.isNullOrEmpty()) 0 else alarmList.last().id + 1
-        val detail: String?
-
+    /**
+     * Sets an alarm for exact time.
+     */
+    private fun startExactAlarm(cal: Calendar?) {
         val alarmManager: AlarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val alarmId = getNextAlarmId()
 
-        val intent = Intent(this, AlertReceiver::class.java)
-
-        if (isRepeatable) {
-            val frequency = getFrequencyType(selectedRepeatType)
-            val curCal = Calendar.getInstance()
-            if (selectedRepeatType == 3) {
-                curCal[Calendar.MINUTE] = 0
-                curCal[Calendar.SECOND] = 0
-            }
-            val baseTime = curCal.timeInMillis
-
-            val startTime = DateFormat.getTimeInstance(DateFormat.SHORT).format(baseTime)
-            detail = REPEAT_TYPES[selectedRepeatType] + " - Start Time:$startTime"
-            intent.putExtra("id", alarmId)
-            intent.putExtra("detail", detail)
-            val pendingIntent =
-                PendingIntent.getBroadcast(this, alarmId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
-            alarmManager.setInexactRepeating(
-                AlarmManager.RTC_WAKEUP,
-                baseTime + frequency,
-                frequency,
-                pendingIntent
-            )
-
-        } else {
-            if (cal!!.before(Calendar.getInstance())) {
-                cal.add(Calendar.DATE, 1)
-            }
-            detail = DateFormat.getTimeInstance(DateFormat.SHORT).format(cal.time)
-
-            intent.putExtra("id", alarmId)
-            intent.putExtra("detail", detail)
-            val pendingIntent =
-                PendingIntent.getBroadcast(this, alarmId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
-
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
+        if (cal!!.before(Calendar.getInstance())) {
+            cal.add(Calendar.DATE, 1)
         }
+        val detail = DateFormat.getTimeInstance(DateFormat.SHORT).format(cal.time)
 
-        val alarm = Alarm(id = alarmId, detail = detail!!)
-        saveAlarm(alarm)
+        val pendingIntent = createIntent(alarmId, detail)
+
+        alarmManager.setExact(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
+
+        saveAlarm(Alarm(id = alarmId, detail = detail))
+    }
+
+    /**
+     * Sets an alarm for triggering periodically
+     */
+    private fun startRepeatAlarm() {
+        val alarmManager: AlarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val alarmId = getNextAlarmId()
+
+        val frequency = selectedRepeatType!!.intervalMilis
+        val cal = Calendar.getInstance()
+        if (selectedRepeatType == RepeatType.HOURLY) { // to trigger at o'clock
+            cal[Calendar.MINUTE] = 0
+            cal[Calendar.SECOND] = 0
+        }
+        val baseTime = cal.timeInMillis
+
+        val startTime = DateFormat.getTimeInstance(DateFormat.SHORT).format(baseTime)
+        val detail = selectedRepeatType!!.value + " - Start Time:$startTime"
+
+        val pendingIntent = createIntent(alarmId, detail)
+
+        alarmManager.setInexactRepeating(
+            AlarmManager.RTC_WAKEUP,
+            baseTime + frequency,
+            frequency,
+            pendingIntent
+        )
+
+        saveAlarm(Alarm(id = alarmId, detail = detail))
+    }
+
+    private fun createIntent(alarmId: Int, detail: String?): PendingIntent? {
+        val intent = Intent(this, AlertReceiver::class.java)
+        intent.putExtra("id", alarmId)
+        intent.putExtra("detail", detail)
+        return PendingIntent.getBroadcast(this, alarmId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
+
+    private fun getNextAlarmId(): Int {
+        val alarmList = this.getArrayList(ALARM_STORE_KEY)
+        return if (alarmList.isNullOrEmpty()) 0 else alarmList.last().id + 1
     }
 
     private fun cancelAlarm(alarm: Alarm) {

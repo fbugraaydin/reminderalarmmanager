@@ -7,12 +7,14 @@ const val CHANNEL_NAME: String = "ReminderChannelName"
 
 const val ALARM_STORE_KEY: String = "AlarmIds"
 
-val REPEAT_TYPES = arrayOf("Every Minutes", "Every 15 Minutes", "Every 30 Minutes", "Hourly")
+enum class RepeatType(val id:Int, val value:String,val intervalMilis:Long){
+    EVERY_MINUTE(0,"Every Minute",1 * 60 * 1000),
+    EVERY_FIFTEEN_MINUTES(1,"Every 15 Minutes",AlarmManager.INTERVAL_FIFTEEN_MINUTES),
+    EVERY_THIRTY_MINUTES(2,"Every 30 Minutes",AlarmManager.INTERVAL_HALF_HOUR),
+    HOURLY(3,"Hourly",AlarmManager.INTERVAL_HOUR);
 
-fun getFrequencyType(repeatType: Int) = when (repeatType) {
-    0 -> 1 * 60 * 1000
-    1 -> AlarmManager.INTERVAL_FIFTEEN_MINUTES
-    2 -> AlarmManager.INTERVAL_HALF_HOUR
-    3 -> AlarmManager.INTERVAL_HOUR
-    else -> throw RuntimeException("Couldn't find frequency type")
+    companion object {
+        fun getById(id: Int?): RepeatType? = values().find { it.id == id }
+        fun labels():List<String> = values().map { it.value }
+    }
 }
