@@ -45,7 +45,10 @@ class MainActivity : AppCompatActivity() {
         coordinatorLayout = findViewById(R.id.coordinatorLayout)
 
         createNotificationChannel()
+        listeners()
+    }
 
+    private fun listeners() {
         datePickerButton.setOnClickListener {
             val materialTimePicker: MaterialTimePicker = MaterialTimePicker.Builder()
                 .setTimeFormat(TimeFormat.CLOCK_24H).build()
@@ -64,25 +67,24 @@ class MainActivity : AppCompatActivity() {
                 .setTitle("Select Frequency Time")
                 .setItems(REPEAT_TYPES) { dialog, which ->
                     this.selectedRepeatType = which
-                    startAlarm(null,true)
+                    startAlarm(null, true)
                 }
                 .show()
         }
 
         cancelAlarmButton.setOnClickListener {
             val availableAlarmObjectList = getArrayList(ALARM_STORE_KEY)!!
-            val availableAlarmList = availableAlarmObjectList.map { "${it.id} - ${it.detail}" }.toTypedArray()
+            val availableAlarmList =
+                availableAlarmObjectList.map { "${it.id} - ${it.detail}" }.toTypedArray()
 
             MaterialAlertDialogBuilder(this)
                 .setTitle("Select Alarm to cancel.")
                 .setItems(availableAlarmList) { dialog, which ->
                     val selectedAlarm = availableAlarmObjectList[which]
                     cancelAlarm(selectedAlarm)
-                    time.text = getString(R.string.amount_of_alarms,availableAlarmList.size)
                 }
                 .show()
         }
-
     }
 
     private fun onTimeSet(hour: Int, minute: Int) {
@@ -103,17 +105,19 @@ class MainActivity : AppCompatActivity() {
 
         val intent = Intent(this, AlertReceiver::class.java)
 
-
         if(isRepeatable){
             var baseTime = 0L
-            if(selectedRepeatType == 1 || selectedRepeatType == 2 || selectedRepeatType == 3){
+            if(selectedRepeatType == 0 || selectedRepeatType == 1 || selectedRepeatType == 2){
                 baseTime = SystemClock.elapsedRealtime()
-            }else if(selectedRepeatType == 4){
-                baseTime =  Calendar.getInstance().timeInMillis
+            }else if(selectedRepeatType == 3){
+                val curCal = Calendar.getInstance()
+                curCal[Calendar.MINUTE] = 0
+                curCal[Calendar.SECOND] = 0
+                baseTime =  curCal.timeInMillis
             }
 
             val frequency = this.getFrequencyType()
-            detail = REPEAT_TYPES[alarmId]
+            detail = REPEAT_TYPES[selectedRepeatType]
             intent.putExtra("id",alarmId)
             intent.putExtra("detail",detail)
             val pendingIntent = PendingIntent.getBroadcast(this, alarmId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
@@ -154,14 +158,16 @@ class MainActivity : AppCompatActivity() {
         alarmList.remove(alarm)
         saveArrayList(alarmList, ALARM_STORE_KEY)
 
+        time.text = getString(R.string.amount_of_alarms,alarmList.size)
         Snackbar.make(coordinatorLayout, getString(R.string.cancel_alarm_info,alarm.detail), Snackbar.LENGTH_LONG).show()
     }
 
     private fun getFrequencyType():Long{
         return when(selectedRepeatType){
-            1 -> 1 * 1000
-            2 -> AlarmManager.INTERVAL_FIFTEEN_MINUTES
-            3 -> AlarmManager.INTERVAL_HALF_HOUR
+            0 -> 1 * 1000
+            1 -> AlarmManager.INTERVAL_FIFTEEN_MINUTES
+            2 -> AlarmManager.INTERVAL_HALF_HOUR
+            3 -> AlarmManager.INTERVAL_HOUR
             else -> throw RuntimeException("Couldn't find frequency type")
         }
     }
@@ -184,8 +190,8 @@ class MainActivity : AppCompatActivity() {
         alarmList.add(alarm)
         saveArrayList(alarmList, ALARM_STORE_KEY)
 
-        time.text = getString(R.string.amount_of_alarms,alarmList.size)
         Snackbar.make(coordinatorLayout, getString(R.string.set_alarm_info,alarm.detail), Snackbar.LENGTH_LONG).show()
+        time.text = getString(R.string.amount_of_alarms,alarmList.size)
     }
 
     private fun saveArrayList(list: List<Alarm>?, key: String?) {
