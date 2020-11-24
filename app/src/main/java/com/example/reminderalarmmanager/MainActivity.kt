@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity() {
                 .setTitle("Select Alarm to cancel.")
                 .setItems(availableAlarmList) { dialog, which ->
                     val selectedAlarm = availableAlarmObjectList[which]
-                    cancelAlarm(selectedAlarm.id)
+                    cancelAlarm(selectedAlarm)
                     time.text = getString(R.string.amount_of_alarms,availableAlarmList.size)
                 }
                 .show()
@@ -113,10 +113,10 @@ class MainActivity : AppCompatActivity() {
             }
 
             val frequency = this.getFrequencyType()
-            detail = "Every " + REPEAT_TYPES[alarmId]
+            detail = REPEAT_TYPES[alarmId]
             intent.putExtra("id",alarmId)
             intent.putExtra("detail",detail)
-            val pendingIntent = PendingIntent.getBroadcast(this, alarmId, intent, 0)
+            val pendingIntent = PendingIntent.getBroadcast(this, alarmId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
             alarmManager.setInexactRepeating(
                 AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 baseTime + frequency,
@@ -132,7 +132,7 @@ class MainActivity : AppCompatActivity() {
 
             intent.putExtra("id",alarmId)
             intent.putExtra("detail",detail)
-            val pendingIntent = PendingIntent.getBroadcast(this, alarmId, intent, 0)
+            val pendingIntent = PendingIntent.getBroadcast(this, alarmId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
 
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
         }
@@ -140,13 +140,21 @@ class MainActivity : AppCompatActivity() {
         saveAlarm(Alarm(id = alarmId,detail = detail!!))
     }
 
-    private fun cancelAlarm(alarmId:Int) {
+    private fun cancelAlarm(alarm:Alarm) {
         val alarmManager =
             getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, AlertReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(this, alarmId, intent, 0)
+        val pendingIntent = PendingIntent.getBroadcast(this, alarm.id, intent, PendingIntent.FLAG_CANCEL_CURRENT)
         alarmManager.cancel(pendingIntent)
-        Snackbar.make(coordinatorLayout, getString(R.string.cancel_alarm_info,alarmId.toString()), Snackbar.LENGTH_LONG).show()
+
+        var alarmList = getArrayList(ALARM_STORE_KEY)
+        if(alarmList.isNullOrEmpty()){
+            alarmList = ArrayList()
+        }
+        alarmList.remove(alarm)
+        saveArrayList(alarmList, ALARM_STORE_KEY)
+
+        Snackbar.make(coordinatorLayout, getString(R.string.cancel_alarm_info,alarm.detail), Snackbar.LENGTH_LONG).show()
     }
 
     private fun getFrequencyType():Long{
