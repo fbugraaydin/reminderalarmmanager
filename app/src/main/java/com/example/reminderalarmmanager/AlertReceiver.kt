@@ -17,7 +17,9 @@ class AlertReceiver:BroadcastReceiver() {
                 .setSmallIcon(R.drawable.ic_launcher_background)
                 .setContentTitle(detail)
                 .setContentText("$id - $detail")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setVibrate(longArrayOf(1000,1000))
                 .build()
 
         notificationManager.notify(200,notification)
