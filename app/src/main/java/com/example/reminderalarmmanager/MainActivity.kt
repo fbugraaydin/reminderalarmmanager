@@ -4,6 +4,8 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
 import android.widget.Button
@@ -20,6 +22,7 @@ import java.lang.reflect.Type
 import java.text.DateFormat
 import java.util.*
 import kotlin.collections.ArrayList
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -68,17 +71,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         cancelAlarmButton.setOnClickListener {
-            val availableAlarmObjectList = getArrayList(ALARM_STORE_KEY)!!
-            val availableAlarmList =
-                availableAlarmObjectList.map { "${it.id} - ${it.detail}" }.toTypedArray()
+            val availableAlarmObjectList = getArrayList(ALARM_STORE_KEY)
+            if(!availableAlarmObjectList.isNullOrEmpty()){
+                val availableAlarmList =
+                    availableAlarmObjectList.map { "${it.id} - ${it.detail}" }.toTypedArray()
 
-            MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.cancel_alarm_dialog_title)
-                .setItems(availableAlarmList) { dialog, which ->
-                    val selectedAlarm = availableAlarmObjectList[which]
-                    cancelAlarm(selectedAlarm)
-                }
-                .show()
+                MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.cancel_alarm_dialog_title)
+                    .setItems(availableAlarmList) { dialog, which ->
+                        val selectedAlarm = availableAlarmObjectList[which]
+                        cancelAlarm(selectedAlarm)
+                    }
+                    .show()
+            }
         }
     }
 
@@ -203,10 +208,21 @@ class MainActivity : AppCompatActivity() {
                 CHANNEL_ID, CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_HIGH
             )
-            notificationChannel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            val att = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            notificationChannel.apply {
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                enableVibration(true)
+                enableLights(true)
+                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),att)
+                //vibrationPattern = longArrayOf( 1000, 1000, 1000, 1000, 1000)
+            }
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(notificationChannel)
         }
+
     }
 
     /**
@@ -221,7 +237,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * List alam list from the device memory
+     * List alarm list from the device memory
      */
     private fun getArrayList(key: String?): MutableList<Alarm>? {
         val prefs: SharedPreferences = getPreferences(Context.MODE_PRIVATE)
