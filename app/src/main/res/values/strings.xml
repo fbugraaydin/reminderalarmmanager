@@ -3,6 +3,7 @@
     <string name="cancel_alarm_info">Canceled Alarm: %s</string>
     <string name="set_alarm_info">Alarm Set: %s</string>
     <string name="amount_of_alarms">The amount of alarm is %1$d</string>
-    <string name="frequecy_dialog_title">Select Frequency Time</string>
-    <string name="cancel_alarm_dialog_title">Select Alarm to cancel</string>
+    <string name="repeat_time_dialog_title">Select repeat time</string>
+    <string name="cancel_alarm_dialog_title">Select alarm to cancel</string>
+    <string name="alarm_title">Alarm Description</string>
 </resources>
