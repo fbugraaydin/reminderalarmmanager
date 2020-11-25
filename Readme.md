@@ -1,4 +1,4 @@
-## Car Price Analyst
+## Reminder Alarm Manager POC
 
 Reminder Alarm Manager is a POC that shows how to implement AlarmManager to notify in exact time or periodically.
 
