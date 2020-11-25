@@ -21,23 +21,28 @@ Reminder Alarm Manager is a POC that shows how to implement AlarmManager to noti
 ## Screenshots
 
 - Main Screen
-![Analyze](screenshots/mainscreen.png?raw=true)
+
+![MainScreen](screenshots/mainscreen.png?raw=true)
 <br/>
 
 - Exact Time Selection
-![History](screenshots/exacttimeselection.png?raw=true)
+
+![ExactTimeSelection](screenshots/exacttimeselection.png?raw=true)
 <br/>
 
 - Repeat Time Selection
-![Analyze](screenshots/repeattimeselection.png?raw=true)
+
+![RepeatTypeSelection](screenshots/repeattimeselection.png?raw=true)
 <br/>
 
 - Cancel Alarm
-![Analyze](screenshots/cancelalarm.png?raw=true)
+
+![CancelAlarm](screenshots/cancelalarm.png?raw=true)
 <br/>
 
-- Cancel Alarm
-![Analyze](screenshots/notification.png?raw=true)
+- Notification
+
+![Notification](screenshots/notification.png?raw=true)
 <br/>
 
 ## Licence
