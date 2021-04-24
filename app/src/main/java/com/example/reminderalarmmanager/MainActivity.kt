@@ -18,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.timepicker.MaterialTimePicker
 import com.google.android.material.timepicker.TimeFormat
 import com.google.gson.Gson
@@ -38,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cancelAlarmButton: Button
     private lateinit var repeatTimeSelectButton: Button
     private lateinit var coordinatorLayout: CoordinatorLayout
+    private lateinit var alarmTitleEditText:TextInputEditText
 
     val OVERLAY_REQUEST_CODE = -1010101
 
@@ -46,19 +48,24 @@ class MainActivity : AppCompatActivity() {
 
         if(checkPermission()){
             setContentView(R.layout.activity_main)
-
-            time = findViewById(R.id.timeTextView)
-            datePickerButton = findViewById(R.id.datePickerButton)
-            cancelAlarmButton = findViewById(R.id.cancelAlarmButton)
-            repeatTimeSelectButton = findViewById(R.id.repeatingTimeButton)
-            coordinatorLayout = findViewById(R.id.coordinatorLayout)
-
+            initializeComponents()
             createNotificationChannel()
             listeners()
         }else{
             grantPermission()
         }
+    }
 
+    private fun initializeComponents() {
+        time = findViewById(R.id.timeTextView)
+        datePickerButton = findViewById(R.id.datePickerButton)
+        cancelAlarmButton = findViewById(R.id.cancelAlarmButton)
+        repeatTimeSelectButton = findViewById(R.id.repeatingTimeButton)
+        coordinatorLayout = findViewById(R.id.coordinatorLayout)
+        alarmTitleEditText = findViewById(R.id.alarmDescriptionEditText)
+
+        val alarmList = getArrayList(ALARM_STORE_KEY)
+        showAmountOfAlarms(alarmList?.size?:0)
     }
 
     private fun checkPermission(): Boolean {
@@ -100,43 +107,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun isMiUi(): Boolean {
-        return getSystemProperty("ro.miui.ui.version.name")?.isNotBlank() == true
-    }
-
-    fun isMiuiWithApi28OrMore(): Boolean {
-        return isMiUi() && Build.VERSION.SDK_INT >= 28
-    }
-
-    fun goToXiaomiPermissions(context: Context) {
-        val intent = Intent("miui.intent.action.APP_PERM_EDITOR")
-        intent.setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
-        intent.putExtra("extra_pkgname", context.packageName)
-        context.startActivity(intent)
-    }
-
-    private fun getSystemProperty(propName: String): String? {
-        val line: String
-        var input: BufferedReader? = null
-        try {
-            val p = Runtime.getRuntime().exec("getprop $propName")
-            input = BufferedReader(InputStreamReader(p.inputStream), 1024)
-            line = input.readLine()
-            input.close()
-        } catch (ex: IOException) {
-            return null
-        } finally {
-            if (input != null) {
-                try {
-                    input.close()
-                } catch (e: IOException) {
-                    e.printStackTrace()
-                }
-            }
-        }
-        return line
-    }
-
     private fun listeners() {
         datePickerButton.setOnClickListener {
             val materialTimePicker: MaterialTimePicker = MaterialTimePicker.Builder()
@@ -152,7 +122,7 @@ class MainActivity : AppCompatActivity() {
 
         repeatTimeSelectButton.setOnClickListener {
             MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.frequecy_dialog_title)
+                .setTitle(R.string.repeat_time_dialog_title)
                 .setItems(RepeatType.labels().toTypedArray()) { dialog, which ->
                     this.selectedRepeatType = RepeatType.getById(which)
                     startRepeatAlarm()
@@ -162,9 +132,16 @@ class MainActivity : AppCompatActivity() {
 
         cancelAlarmButton.setOnClickListener {
             val availableAlarmObjectList = getArrayList(ALARM_STORE_KEY)
-            if (!availableAlarmObjectList.isNullOrEmpty()) {
+            if(!availableAlarmObjectList.isNullOrEmpty()){
+
                 val availableAlarmList =
-                    availableAlarmObjectList.map { "${it.id} - ${it.detail}" }.toTypedArray()
+                    availableAlarmObjectList.map {
+                        if(it.title.isBlank()){
+                            "${it.id} - ${it.detail}"
+                        }else{
+                            "${it.id} - ${it.title} - ${it.detail}"
+                        }
+                    }.toTypedArray()
 
                 MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.cancel_alarm_dialog_title)
@@ -202,7 +179,8 @@ class MainActivity : AppCompatActivity() {
 
         alarmManager.setExact(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
 
-        saveAlarm(Alarm(id = alarmId, detail = detail))
+        saveAlarm(Alarm(id = alarmId, title = alarmTitleEditText.text.toString(), detail = detail))
+        alarmTitleEditText.text = null
     }
 
     /**
@@ -212,7 +190,7 @@ class MainActivity : AppCompatActivity() {
         val alarmManager: AlarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val alarmId = getNextAlarmId()
 
-        val frequency = selectedRepeatType!!.intervalMilis
+        val repeatTime = selectedRepeatType!!.intervalMilis
         val cal = Calendar.getInstance()
         if (selectedRepeatType == RepeatType.HOURLY) { // to trigger at o'clock
             cal[Calendar.MINUTE] = 0
@@ -227,21 +205,22 @@ class MainActivity : AppCompatActivity() {
 
         alarmManager.setInexactRepeating(
             AlarmManager.RTC_WAKEUP,
-            baseTime + frequency,
-            frequency,
+            baseTime + repeatTime,
+            repeatTime,
             pendingIntent
         )
 
-        saveAlarm(Alarm(id = alarmId, detail = detail))
+        saveAlarm(Alarm(id = alarmId, title = alarmTitleEditText.text.toString(), detail = detail))
+        alarmTitleEditText.text = null
     }
 
     private fun createIntent(alarmId: Int, detail: String?): PendingIntent? {
         val intent = Intent(this, AlertReceiver::class.java)
         intent.putExtra("id", alarmId)
+        intent.putExtra("title", alarmTitleEditText.text.toString())
         intent.putExtra("detail", detail)
         return PendingIntent.getBroadcast(this, alarmId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
     }
-
 
     private fun getNextAlarmId(): Int {
         val alarmList = this.getArrayList(ALARM_STORE_KEY)
@@ -267,10 +246,10 @@ class MainActivity : AppCompatActivity() {
         alarmList.remove(alarm)
         saveArrayList(alarmList, ALARM_STORE_KEY)
 
-        time.text = getString(R.string.amount_of_alarms, alarmList.size)
+        showAmountOfAlarms(alarmList.size)
         Snackbar.make(
             coordinatorLayout,
-            getString(R.string.cancel_alarm_info, alarm.detail),
+            getString(R.string.cancel_alarm_info, alarm.title),
             Snackbar.LENGTH_LONG
         ).show()
     }
@@ -284,12 +263,16 @@ class MainActivity : AppCompatActivity() {
 
         saveArrayList(alarmList, ALARM_STORE_KEY)
 
-        time.text = getString(R.string.amount_of_alarms, alarmList.size)
+        showAmountOfAlarms(alarmList.size)
         Snackbar.make(
             coordinatorLayout,
             getString(R.string.set_alarm_info, alarm.detail),
             Snackbar.LENGTH_LONG
         ).show()
+    }
+
+    private fun showAmountOfAlarms(amount:Int) {
+        time.text = getString(R.string.amount_of_alarms, amount)
     }
 
     private fun createNotificationChannel() {
@@ -306,7 +289,7 @@ class MainActivity : AppCompatActivity() {
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 enableVibration(true)
                 enableLights(true)
-                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), att)
+                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),att)
                 //vibrationPattern = longArrayOf( 1000, 1000, 1000, 1000, 1000)
             }
             val notificationManager = getSystemService(NotificationManager::class.java)
@@ -336,6 +319,6 @@ class MainActivity : AppCompatActivity() {
         return Gson().fromJson(json, type)
     }
 
-    data class Alarm(val id: Int, val detail: String)
+    data class Alarm(val id: Int, val title:String, val detail: String)
 
 }

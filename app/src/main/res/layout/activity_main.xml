@@ -15,13 +15,20 @@
         android:orientation="vertical"
         tools:context=".MainActivity">
 
-        <TextView
-            android:id="@+id/timeTextView"
-            android:layout_width="wrap_content"
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/alarmTitleInputLayout"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="10dp"
-            android:text="No alarm set yet"
-            android:textSize="18dp" />
+            android:hint="@string/alarm_title"
+            android:layout_margin="15dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/alarmDescriptionEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                />
+
+        </com.google.android.material.textfield.TextInputLayout>
 
         <Button
             android:id="@+id/repeatingTimeButton"
@@ -35,8 +42,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="15dp"
-            android:text="Set Alarm by Specific Time" />
-
+            android:text="Set Alarm by Exact Time" />
 
         <Button
             android:id="@+id/cancelAlarmButton"
@@ -44,6 +50,14 @@
             android:layout_height="wrap_content"
             android:layout_margin="15dp"
             android:text="Cancel Alarm" />
+
+        <TextView
+            android:id="@+id/timeTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="15dp"
+            android:text="No alarm set yet"
+            android:textSize="18dp" />
 
     </LinearLayout>
 

@@ -13,11 +13,12 @@ class AlertReceiver:BroadcastReceiver() {
 
         val notificationManager = NotificationManagerCompat.from(context!!)
         val id = intent?.extras?.getInt("id")
+        val title = intent?.extras?.getString("title")
         val detail = intent?.extras?.getString("detail")
         val notification =
             NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_background)
-                .setContentTitle(detail)
+                .setContentTitle(if(title.isNullOrBlank()) detail else title)
                 .setContentText("$id - $detail")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
