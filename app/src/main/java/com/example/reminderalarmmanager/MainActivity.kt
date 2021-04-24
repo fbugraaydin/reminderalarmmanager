@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var coordinatorLayout: CoordinatorLayout
     private lateinit var alarmTitleEditText:TextInputEditText
 
-    val OVERLAY_REQUEST_CODE = -1010101
+    val OVERLAY_REQUEST_CODE = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
