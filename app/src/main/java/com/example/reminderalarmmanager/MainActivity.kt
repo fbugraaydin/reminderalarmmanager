@@ -1,13 +1,17 @@
 package com.example.reminderalarmmanager
 
 import android.app.*
+import android.app.AlertDialog
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.SharedPreferences
 import android.media.AudioAttributes
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -18,11 +22,13 @@ import com.google.android.material.timepicker.MaterialTimePicker
 import com.google.android.material.timepicker.TimeFormat
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.io.BufferedReader
+import java.io.IOException
+import java.io.InputStreamReader
 import java.lang.reflect.Type
 import java.text.DateFormat
 import java.util.*
 import kotlin.collections.ArrayList
-
 
 class MainActivity : AppCompatActivity() {
 
@@ -33,18 +39,102 @@ class MainActivity : AppCompatActivity() {
     private lateinit var repeatTimeSelectButton: Button
     private lateinit var coordinatorLayout: CoordinatorLayout
 
+    val OVERLAY_REQUEST_CODE = -1010101
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
-        time = findViewById(R.id.timeTextView)
-        datePickerButton = findViewById(R.id.datePickerButton)
-        cancelAlarmButton = findViewById(R.id.cancelAlarmButton)
-        repeatTimeSelectButton = findViewById(R.id.repeatingTimeButton)
-        coordinatorLayout = findViewById(R.id.coordinatorLayout)
+        if(checkPermission()){
+            setContentView(R.layout.activity_main)
 
-        createNotificationChannel()
-        listeners()
+            time = findViewById(R.id.timeTextView)
+            datePickerButton = findViewById(R.id.datePickerButton)
+            cancelAlarmButton = findViewById(R.id.cancelAlarmButton)
+            repeatTimeSelectButton = findViewById(R.id.repeatingTimeButton)
+            coordinatorLayout = findViewById(R.id.coordinatorLayout)
+
+            createNotificationChannel()
+            listeners()
+        }else{
+            grantPermission()
+        }
+
+    }
+
+    private fun checkPermission(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                return false
+            }
+            return true
+        }
+        return true
+    }
+
+    private fun grantPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                if ("xiaomi" == Build.MANUFACTURER.toLowerCase(Locale.ROOT)) {
+                    val intent = Intent("miui.intent.action.APP_PERM_EDITOR")
+                    intent.setClassName(
+                        "com.miui.securitycenter",
+                        "com.miui.permcenter.permissions.PermissionsEditorActivity"
+                    )
+                    intent.putExtra("extra_pkgname", packageName)
+                    AlertDialog.Builder(this)
+                        .setTitle("Please Enable the additional permissions")
+                        .setMessage("You will not receive notifications while the app is in background if you disable these permissions")
+                        .setPositiveButton("Go to Settings",
+                            DialogInterface.OnClickListener { dialog, which -> startActivity(intent) })
+                        .setIcon(android.R.drawable.ic_dialog_info)
+                        .setCancelable(false)
+                        .show()
+                } else {
+                    val overlaySettings = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                    startActivityForResult(overlaySettings, OVERLAY_REQUEST_CODE)
+                }
+            }
+        }
+    }
+
+    fun isMiUi(): Boolean {
+        return getSystemProperty("ro.miui.ui.version.name")?.isNotBlank() == true
+    }
+
+    fun isMiuiWithApi28OrMore(): Boolean {
+        return isMiUi() && Build.VERSION.SDK_INT >= 28
+    }
+
+    fun goToXiaomiPermissions(context: Context) {
+        val intent = Intent("miui.intent.action.APP_PERM_EDITOR")
+        intent.setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
+        intent.putExtra("extra_pkgname", context.packageName)
+        context.startActivity(intent)
+    }
+
+    private fun getSystemProperty(propName: String): String? {
+        val line: String
+        var input: BufferedReader? = null
+        try {
+            val p = Runtime.getRuntime().exec("getprop $propName")
+            input = BufferedReader(InputStreamReader(p.inputStream), 1024)
+            line = input.readLine()
+            input.close()
+        } catch (ex: IOException) {
+            return null
+        } finally {
+            if (input != null) {
+                try {
+                    input.close()
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
+            }
+        }
+        return line
     }
 
     private fun listeners() {
@@ -72,7 +162,7 @@ class MainActivity : AppCompatActivity() {
 
         cancelAlarmButton.setOnClickListener {
             val availableAlarmObjectList = getArrayList(ALARM_STORE_KEY)
-            if(!availableAlarmObjectList.isNullOrEmpty()){
+            if (!availableAlarmObjectList.isNullOrEmpty()) {
                 val availableAlarmList =
                     availableAlarmObjectList.map { "${it.id} - ${it.detail}" }.toTypedArray()
 
@@ -216,7 +306,7 @@ class MainActivity : AppCompatActivity() {
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 enableVibration(true)
                 enableLights(true)
-                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),att)
+                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), att)
                 //vibrationPattern = longArrayOf( 1000, 1000, 1000, 1000, 1000)
             }
             val notificationManager = getSystemService(NotificationManager::class.java)
